@@ -1181,6 +1181,7 @@ class Signal(Callable):
         self.detailed = detailed
         self.action = action
         self.no_hooks = no_hooks
+        self.emitter = None
 
 
 class Class(Node, Registered):
