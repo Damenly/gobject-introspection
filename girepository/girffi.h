@@ -95,6 +95,14 @@ ffi_closure * g_callable_info_prepare_closure     (GICallableInfo       *callabl
                                                    ffi_cif              *cif,
                                                    GIFFIClosureCallback  callback,
                                                    gpointer              user_data);
+
+GI_AVAILABLE_IN_ALL
+ffi_closure * g_callable_info_prepare_closure_v2   (GICallableInfo       *callable_info,
+						   ffi_cif              *cif,
+						   GIFFIClosureCallback  callback,
+						   gpointer              user_data,
+						   gpointer              *exec_ret);
+
 GI_AVAILABLE_IN_ALL
 void          g_callable_info_free_closure        (GICallableInfo       *callable_info,
                                                    ffi_closure          *closure);

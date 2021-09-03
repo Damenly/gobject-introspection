@@ -413,6 +413,73 @@ g_callable_info_prepare_closure (GICallableInfo       *callable_info,
 }
 
 /**
+ * g_callable_info_prepare_closure:
+ * @callable_info: a callable info from a typelib
+ * @cif: a ffi_cif structure
+ * @callback: the ffi callback
+ * @user_data: data to be passed into the callback
+ * @exec_ret: if no NULL, return with exec address
+ *
+ * Prepares a callback for ffi invocation.
+ * Used for arm64(Apple Silicon).
+ *
+ * Returns: the ffi_closure or NULL on error. The return value
+ *     should be freed by calling g_callable_info_free_closure().
+ */
+ffi_closure *
+g_callable_info_prepare_closure_v2 (GICallableInfo       *callable_info,
+				    ffi_cif              *cif,
+				    GIFFIClosureCallback  callback,
+				    gpointer              user_data,
+				    gpointer              *exec_ret)
+{
+  gpointer exec_ptr;
+  int n_args;
+  ffi_type **atypes;
+  GIClosureWrapper *closure;
+  ffi_status status;
+
+  g_return_val_if_fail (callable_info != NULL, FALSE);
+  g_return_val_if_fail (cif != NULL, FALSE);
+  g_return_val_if_fail (callback != NULL, FALSE);
+
+  closure = ffi_closure_alloc (sizeof (GIClosureWrapper), &exec_ptr);
+  if (!closure)
+    {
+      g_warning ("could not allocate closure\n");
+      return NULL;
+    }
+  closure->writable_self = closure;
+
+  atypes = g_callable_info_get_ffi_arg_types (callable_info, &n_args);
+  status = ffi_prep_cif (cif, FFI_DEFAULT_ABI, n_args,
+                         g_callable_info_get_ffi_return_type (callable_info),
+                         atypes);
+  if (status != FFI_OK)
+    {
+      g_warning ("ffi_prep_cif failed: %d\n", status);
+      ffi_closure_free (closure);
+      return NULL;
+    }
+
+  status = ffi_prep_closure_loc (&closure->ffi_closure, cif, callback, user_data, exec_ptr);
+  if (status != FFI_OK)
+    {
+      g_warning ("ffi_prep_closure failed: %d\n", status);
+      ffi_closure_free (closure);
+      return NULL;
+    }
+
+  if (exec_ret)
+	  *exec_ret = exec_ptr;
+  /* For Macos arm64, the underlying memory is no sam as closure,
+   * calling g_callable_info_free_closure() on it will cause a
+   * segmentation fault.
+   */
+  return (ffi_closure *)closure;
+}
+
+/**
  * g_callable_info_free_closure:
  * @callable_info: a callable info from a typelib
  * @closure: ffi closure
